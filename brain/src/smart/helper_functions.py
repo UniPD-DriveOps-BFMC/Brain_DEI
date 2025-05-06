@@ -5,7 +5,27 @@ import numpy as np
 import cv2 as cv
 import pickle
 import time
+import math
 
+def is_valid_pix(pix):
+    """
+    Checks if the given 'pix' is a valid coordinate (tuple of two valid integers or floats).
+    Returns True if valid, False otherwise.
+    """
+    if isinstance(pix, (tuple, list)) and len(pix) == 2:
+        x, y = pix
+        return all(isinstance(v, (int, float)) and math.isfinite(v) for v in (x, y))
+    return False
+
+def safe_pix_to_int(pix):
+    """
+    Converts 'pix' to a tuple of integers after ensuring it's valid. 
+    Returns (None, None) if invalid.
+    """
+    if is_valid_pix(pix):
+        x, y = pix
+        return (int(round(x)), int(round(y)))
+    return (None, None)
 
 def diff_angle(angle1, angle2):
     return np.arctan2(np.sin(angle1-angle2), np.cos(angle1-angle2))
@@ -402,7 +422,14 @@ def show_local_path_just_switched(brain,
                 p = local_path_cf[i]
                 pix = mR2pix(p)
                 pix = (int(pix[0]+w//2), int(pix[1]-h//2))
-                cv.circle(local_map_img, pix, 10, (0, 150, 150), -1)
+                pix_int = safe_pix_to_int(pix)
+
+                # Now check if pix_int is valid (not None)
+                #if pix_int != (None, None):
+                  #  cv.circle(local_map_img, pix_int, 10, (0, 150, 150), -1)
+                #else:
+                    # If invalid pix_int, skip circle drawing silently (no crash)
+                 #   pass
         cv.imshow('local_path', local_map_img)
         # cv.waitKey(1)
         brain.curr_state.var3 = local_map_img

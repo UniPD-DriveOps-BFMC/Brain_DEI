@@ -565,15 +565,14 @@ class Brain:
         assert len(self.checkpoints) >= 2, 'List of checkpoints needs 2 or more nodes'
 
         # Compute path through all remaining checkpoints
-        full_path = []
-        for i in range(self.checkpoint_idx, len(self.checkpoints)-1):
-            start_node = self.checkpoints[i]
-            end_node = self.checkpoints[i+1]
-            print(f'Computing segment {i}: {start_node} -> {end_node}')
-            self.path_planner.compute_shortest_path(start_node, end_node)
-            full_path.extend(self.path_planner.path)
 
-        self.path_planner.path = np.array(full_path)
+        start_node = self.checkpoints[self.checkpoint_idx]
+        end_node = self.checkpoints[self.checkpoint_idx+1]
+
+        self.path_planner.compute_shortest_path(start_node, end_node)
+
+
+
         events = self.path_planner.augment_path(draw=SHOW_IMGS)
         # add the events to the list of events, increasing it
         self.path_planner.draw_path()
@@ -652,6 +651,10 @@ class Brain:
         # if next next event is TUNNEL_EVENT switch to TUNNEL state (we use next next because the intersection stop event is not trigered as the croswalk is too close to the entrance)
         elif getattr(self.second_next_event, 'name', None) == nac.TUNNEL_EVENT:   #safe against None values
             min_distance_lidar_right = hf.get_min_distance_in_range(self.car.lidar_angles,self.car.lidar_ranges, -95, -85) 
+            self.activate_routines([nac.FOLLOW_LANE,
+                                    nac.DETECT_STOPLINE,
+                                    nac.CONTROL_FOR_CAR,
+                                    nac.DRIVE_DESIRED_SPEED])
             if (min_distance_lidar_right <= 0.4):    
                 self.switch_to_state(nac.TUNNEL_SPEED_CURVE)
                 self.go_to_next_event()  
@@ -670,7 +673,7 @@ class Brain:
         # end of current route, go to end state
         elif self.next_event.name == nac.END_EVENT:
 
-            self.checkpoint_idx = len(self.checkpoints) ## JUST ADDED BY EUGEN
+           
 
             if self.checkpoint_idx == len(self.checkpoints) - 1:
                 self.lane_following_to_end()
@@ -678,7 +681,7 @@ class Brain:
                 self.go_to_next_event()
                 # start routing for next checkpoint
                 self.next_checkpoint()
-                #self.switch_to_state(nac.START_STATE)
+                self.switch_to_state(nac.START_STATE)
 
         # we are approaching a stopline, check only if we are far enough from the previous stopline
         else:
@@ -1756,6 +1759,7 @@ class Brain:
         print(f'UPCOMING_EVENT: {self.next_event}')
         print(f'ROUTINES:       {self.active_routines_names+ALWAYS_ON_ROUTINES}')
         print(f'CONDITIONS:     {self.conditions}')
+        print(f'next next event: {self.second_next_event}')
         print('==========================================================================')
         self.run_current_state()
         print(f'car.yaw: {self.car.yaw}')
